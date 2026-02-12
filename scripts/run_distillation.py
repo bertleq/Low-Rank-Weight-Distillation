@@ -28,7 +28,7 @@ def parse_args():
     parser.add_argument("--dataset_name", type=str, default="wikitext", help="Dataset name")
     parser.add_argument("--dataset_config", type=str, default="wikitext-2-raw-v1", help="Dataset config")
     parser.add_argument("--output_dir", type=str, default="./output", help="Output directory")
-    parser.add_argument("--num_train_epochs", type=int, default=1, help="Number of training epochs")
+    parser.add_argument("--num_train_epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
     parser.add_argument("--learning_rate", type=float, default=5e-5, help="Learning rate")
     parser.add_argument("--alpha", type=float, default=0.5, help="Distillation loss weight")
@@ -92,9 +92,24 @@ def main():
     print("Initializing student with SVD from teacher...")
     initialize_student_from_teacher(student_model, teacher_model)
 
+    # Freeze all parameters except LowRankLinear layers
+    # This focuses training on the factorized weights only
+    frozen_count = 0
+    trainable_count = 0
+    for name, param in student_model.named_parameters():
+        if "project_in" in name or "project_out" in name:
+            param.requires_grad = True
+            trainable_count += param.numel()
+        else:
+            param.requires_grad = False
+            frozen_count += param.numel()
+    
+    print(f"Frozen parameters: {frozen_count:,}")
+    print(f"Trainable parameters (LowRankLinear only): {trainable_count:,}")
+
     # Calculate parameter count
     def count_parameters(model):
-        return sum(p.numel() for p in model.parameters() if p.requires_grad)
+        return sum(p.numel() for p in model.parameters())
     
     teacher_params = count_parameters(teacher_model)
     student_params = count_parameters(student_model)
