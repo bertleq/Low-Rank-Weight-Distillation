@@ -24,7 +24,7 @@ def parse_args():
     parser.add_argument("--teacher_model", type=str, required=True, help="Path or name of teacher model")
     parser.add_argument("--mode", type=str, default="init", help="Mode (train or init)")
     parser.add_argument("--rank", type=int, default=32, help="Rank for low-rank approximation (global default)")
-    parser.add_argument("--rank_config", type=str, default='{\"q_proj\": 32, \"v_proj\": 32, \"k_proj\": 32, \"gate_proj\": 16, \"up_proj\": 16, \"down_proj\": 16, \"lm_head\": 16}', help="JSON string for variable rank config (e.g. '{\"q_proj\": 16, \"v_proj\": 32}')")
+    parser.add_argument("--rank_config", type=str, default='{\"q_proj\": 256, \"v_proj\": 256, \"k_proj\": 256, \"gate_proj\": 128, \"up_proj\": 256, \"down_proj\": 256, \"lm_head\": 128}', help="JSON string for variable rank config (e.g. '{\"q_proj\": 16, \"v_proj\": 32}')")
     parser.add_argument("--dataset_name", type=str, default="wikitext", help="Dataset name")
     parser.add_argument("--dataset_config", type=str, default="wikitext-2-raw-v1", help="Dataset config")
     parser.add_argument("--output_dir", type=str, default="./output", help="Output directory")
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--alpha", type=float, default=0.5, help="Distillation loss weight")
     parser.add_argument("--temperature", type=float, default=2.0, help="Distillation temperature")
     parser.add_argument("--max_length", type=int, default=128, help="Max sequence length")
-    parser.add_argument("--target_modules", nargs='+', default=['q_proj', 'k_proj', 'v_proj', 'o_proj', 'gate_proj', 'up_proj', 'down_proj', 'lm_head'], help="Modules to replace with LowRankLinear")
+    parser.add_argument("--target_modules", nargs='+', default=['o_proj', 'gate_proj', 'up_proj', 'down_proj', 'lm_head'], help="Modules to replace with LowRankLinear")
     return parser.parse_args()
 
 def generate_text(model, tokenizer, prompt, max_new_tokens=512):
@@ -105,8 +105,6 @@ def main():
     print("Who are you?")
     print(generate_text(student_model, tokenizer, "Who are you?"))
 
-    if args.mode == "init":
-        return    
     # Prepare Dataset
     print(f"Loading dataset {args.dataset_name}...")
     dataset = load_dataset(args.dataset_name, args.dataset_config)
@@ -140,12 +138,36 @@ def main():
         alpha=args.alpha,
         temperature=args.temperature,
     )
+
+    print("Saving non-trained student model...")
+    trainer.save_model(args.output_dir)
     
+    # Save distillation config for loading
+    distillation_config = {
+        "rank": rank_arg,
+        "target_modules": args.target_modules
+    }
+    with open(os.path.join(args.output_dir, "distillation_config.json"), "w") as f:
+        json.dump(distillation_config, f, indent=2)
+    print(f"Saved distillation config to {args.output_dir}/distillation_config.json")
+
+    if args.mode == "init":
+        return
+
     print("Starting training...")
     trainer.train()
     
     print("Saving student model...")
     trainer.save_model(args.output_dir)
+    
+    # Save distillation config for loading
+    distillation_config = {
+        "rank": rank_arg,
+        "target_modules": args.target_modules
+    }
+    with open(os.path.join(args.output_dir, "distillation_config.json"), "w") as f:
+        json.dump(distillation_config, f, indent=2)
+    print(f"Saved distillation config to {args.output_dir}/distillation_config.json")
 
 if __name__ == "__main__":
     main()
