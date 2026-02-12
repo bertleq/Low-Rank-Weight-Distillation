@@ -124,8 +124,21 @@ def load_student_model(checkpoint_dir, device="cpu", dtype=torch.float32):
     else:
         raise FileNotFoundError(f"Colud not find model checkpoints in {checkpoint_dir}")
         
-    # Load state dict strictly
-    keys = student_model.load_state_dict(state_dict, strict=True)
+    # Load state dict with strict=False to handle tied weights
+    # (e.g. Qwen2 ties lm_head.weight to model.embed_tokens.weight,
+    # so the Trainer only saves one copy and lm_head.weight is "missing")
+    result = student_model.load_state_dict(state_dict, strict=False)
+    
+    # Re-tie weights (this will link lm_head.weight -> model.embed_tokens.weight)
+    student_model.tie_weights()
+    
+    # Warn about truly unexpected missing/extra keys (ignoring tied ones)
+    tied_keys = {"lm_head.weight"}  # known tied keys
+    unexpected_missing = [k for k in result.missing_keys if k not in tied_keys]
+    if unexpected_missing:
+        print(f"Warning: Unexpected missing keys: {unexpected_missing}")
+    if result.unexpected_keys:
+        print(f"Warning: Unexpected extra keys: {result.unexpected_keys}")
     
     # Move to device and dtype
     student_model.to(device=device, dtype=dtype)
