@@ -22,9 +22,9 @@ import json
 def parse_args():
     parser = argparse.ArgumentParser(description="Low-Rank Knowledge Distillation")
     parser.add_argument("--teacher_model", type=str, required=True, help="Path or name of teacher model")
-    parser.add_argument("--mode", type=str, default="init", help="Mode (train or init)")
+    parser.add_argument("--mode", type=str, default="train", help="Mode (train or init)")
     parser.add_argument("--rank", type=int, default=32, help="Rank for low-rank approximation (global default)")
-    parser.add_argument("--rank_config", type=str, default='{\"q_proj\": 256, \"v_proj\": 256, \"k_proj\": 256, \"gate_proj\": 128, \"up_proj\": 256, \"down_proj\": 256, \"lm_head\": 128}', help="JSON string for variable rank config (e.g. '{\"q_proj\": 16, \"v_proj\": 32}')")
+    parser.add_argument("--rank_config", type=str, default='{\"q_proj\": 256, \"v_proj\": 256, \"k_proj\": 256, \"gate_proj\": 128, \"up_proj\": 256, \"down_proj\": 256, \"lm_head\": 256}', help="JSON string for variable rank config (e.g. '{\"q_proj\": 16, \"v_proj\": 32}')")
     parser.add_argument("--dataset_name", type=str, default="wikitext", help="Dataset name")
     parser.add_argument("--dataset_config", type=str, default="wikitext-2-raw-v1", help="Dataset config")
     parser.add_argument("--output_dir", type=str, default="./output", help="Output directory")
@@ -34,7 +34,7 @@ def parse_args():
     parser.add_argument("--alpha", type=float, default=0.5, help="Distillation loss weight")
     parser.add_argument("--temperature", type=float, default=2.0, help="Distillation temperature")
     parser.add_argument("--max_length", type=int, default=128, help="Max sequence length")
-    parser.add_argument("--target_modules", nargs='+', default=['o_proj', 'gate_proj', 'up_proj', 'down_proj', 'lm_head'], help="Modules to replace with LowRankLinear")
+    parser.add_argument("--target_modules", nargs='+', default=['o_proj', 'gate_proj', 'up_proj', 'down_proj'], help="Modules to replace with LowRankLinear") 
     return parser.parse_args()
 
 def generate_text(model, tokenizer, prompt, max_new_tokens=512):
