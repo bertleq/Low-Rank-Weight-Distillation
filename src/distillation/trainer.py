@@ -4,7 +4,7 @@ import torch.nn.functional as F
 from transformers import Trainer
 
 class DistillationTrainer(Trainer):
-    def __init__(self, *args, teacher_model=None, alpha=0.5, temperature=2.0, **kwargs):
+    def __init__(self, *args, teacher_model=None, alpha=0.8, temperature=2.0, **kwargs):
         super().__init__(*args, **kwargs)
         self.teacher_model = teacher_model
         self.alpha = alpha
@@ -31,9 +31,13 @@ class DistillationTrainer(Trainer):
         loss_fct = nn.KLDivLoss(reduction="batchmean")
         
         # Scale by temperature
+        # Flatten to (batch * seq_len, vocab_size) so batchmean normalizes per-token
+        flat_student = logits_student.view(-1, logits_student.size(-1))
+        flat_teacher = logits_teacher.view(-1, logits_teacher.size(-1))
+        
         loss_kd = (self.temperature ** 2) * loss_fct(
-            F.log_softmax(logits_student / self.temperature, dim=-1),
-            F.softmax(logits_teacher / self.temperature, dim=-1)
+            F.log_softmax(flat_student / self.temperature, dim=-1),
+            F.softmax(flat_teacher / self.temperature, dim=-1)
         )
         
         # Calculate standard task loss (Cross Entropy)

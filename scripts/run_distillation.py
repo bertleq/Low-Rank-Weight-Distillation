@@ -31,7 +31,7 @@ def parse_args():
     parser.add_argument("--num_train_epochs", type=int, default=5, help="Number of training epochs")
     parser.add_argument("--batch_size", type=int, default=4, help="Batch size")
     parser.add_argument("--learning_rate", type=float, default=5e-5, help="Learning rate")
-    parser.add_argument("--alpha", type=float, default=0.5, help="Distillation loss weight")
+    parser.add_argument("--alpha", type=float, default=0.8, help="Distillation loss weight")
     parser.add_argument("--temperature", type=float, default=2.0, help="Distillation temperature")
     parser.add_argument("--max_length", type=int, default=128, help="Max sequence length")
     parser.add_argument("--target_modules", nargs='+', default=['o_proj', 'gate_proj', 'up_proj', 'down_proj'], help="Modules to replace with LowRankLinear") 
